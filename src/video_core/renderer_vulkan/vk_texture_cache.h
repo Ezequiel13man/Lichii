@@ -259,10 +259,10 @@ public:
     std::unique_ptr<Fsr3Upscaler> fsr3_upscaler;
     bool fsr3_unsupported{};
 
-    /// The LOD bias Ocarina's FSR adds to mipmapped samplers this session (0 for other games or
-    /// upscalers), resolved on first use.
+    /// Potential bias for Ocarina's mipmapped samplers. Variants drop it when disabled.
     [[nodiscard]] f32 OcarinaFsrLodBias();
     std::optional<f32> ocarina_fsr_lod_bias;
+    bool ocarina_dlss_bias{};
     /// Set when the Ocarina upscaler fails during the session: samplers drop the bias again.
     bool ocarina_fsr_failed{};
     /// The game DLSS network's health check (ProbeGameDlssOutput), created on first use.
@@ -897,6 +897,7 @@ private:
     bool has_added_anisotropy{};
     bool has_linear_filtering{};
     bool has_depth_comparison{};
+    bool ocarina_dlss_bias{};
     f32 added_lod_bias{}; ///< Ocarina FSR part of base_ci.mipLodBias
     bool has_minmax_reduction{};
     bool has_custom_border_colors{};

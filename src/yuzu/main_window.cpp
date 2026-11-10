@@ -178,6 +178,8 @@ static FileSys::VirtualFile VfsDirectoryCreateFileWrapper(const FileSys::Virtual
 
 // Video Core //
 #include "video_core/gpu.h"
+#include "video_core/ocarina_upscale.h"
+#include "video_core/oot_network.h"
 #include "video_core/renderer_base.h"
 #include "video_core/shader_notify.h"
 
@@ -1392,6 +1394,17 @@ void MainWindow::InitializeHotkeys() {
         if (Settings::values.enable_renderdoc_hotkey) {
             QtCommon::system->GetRenderdocAPI().ToggleCapture();
         }
+    });
+    connect_shortcut(QStringLiteral("Toggle OoT DLSS Jitter and Mipmap Bias"), [this] {
+        if (!emulation_running ||
+            Settings::GetCurrentProgramID() != VideoCommon::OotNetwork::ProgramId ||
+            !Settings::values.nvidia_dlss.GetValue()) {
+            return;
+        }
+        const bool enabled = VideoCommon::OcarinaDlssJitter().Toggle();
+        statusBar()->showMessage(enabled ? tr("OoT DLSS jitter and mipmap bias enabled")
+                                         : tr("OoT DLSS jitter and mipmap bias disabled"),
+                                  4000);
     });
     connect_shortcut(QStringLiteral("Toggle Mouse Panning"), [&] {
         Settings::values.mouse_panning = !Settings::values.mouse_panning;

@@ -50,6 +50,7 @@ SWITCHABLE(AntiAliasing, false);
 SWITCHABLE(OotAntiAliasing, false);
 SWITCHABLE(NvidiaDlssQuality, false);
 SWITCHABLE(NvidiaDlssPreset, false);
+SWITCHABLE(OotMovieUpscale, false);
 SWITCHABLE(AspectRatio, true);
 SWITCHABLE(AstcDecodeMode, true);
 SWITCHABLE(AstcRecompression, true);

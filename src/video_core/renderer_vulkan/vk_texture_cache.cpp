@@ -4652,8 +4652,10 @@ void CustomBorderColorBudget::Release() noexcept {
 f32 TextureCacheRuntime::OcarinaFsrLodBias() {
     if (!ocarina_fsr_lod_bias) {
         const bool ocarina = Settings::GetCurrentProgramID() == 0x0400486024DEC000ULL;
-        ocarina_fsr_lod_bias =
-            ocarina ? VideoCommon::OcarinaFsrLodBias(ResolveOcarinaUpscaler(device)) : 0.0f;
+        const auto backend = ocarina ? ResolveOcarinaUpscaler(device)
+                                     : VideoCommon::OcarinaUpscaleBackend::Native;
+        ocarina_dlss_bias = backend == VideoCommon::OcarinaUpscaleBackend::Dlss;
+        ocarina_fsr_lod_bias = VideoCommon::OcarinaFsrLodBias(backend, true);
     }
     return *ocarina_fsr_lod_bias;
 }
@@ -4717,8 +4719,7 @@ Sampler::Sampler(TextureCacheRuntime& runtime, const Tegra::Texture::TSCEntry& t
             max_lod = 0.25f;
         }
     }
-    // Ocarina with FSR: FSR renders below the output size, so textures would pick the render
-    // size's mips; the bias keeps the output's detail (VideoCommon::OcarinaFsrLodBias).
+    // Keep biased and unbiased variants available even when the session starts with bias off.
     f32 lod_bias = tsc.LodBias();
     ocarina_fsr_failed = &runtime.ocarina_fsr_failed;
     if (const f32 fsr_lod_bias = runtime.OcarinaFsrLodBias();
@@ -4727,6 +4728,7 @@ Sampler::Sampler(TextureCacheRuntime& runtime, const Tegra::Texture::TSCEntry& t
         added_lod_bias = biased - lod_bias;
         lod_bias = biased;
     }
+    ocarina_dlss_bias = runtime.ocarina_dlss_bias;
     base_ci = VkSamplerCreateInfo{
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
         .pNext = nullptr,
@@ -4770,7 +4772,8 @@ Sampler::VariantKey Sampler::MakeKey(const ImageView& image_view, bool is_depth)
         const Image* const image = image_view.BackingImage();
         key.drop_lod_bias = !VideoCommon::KeepOcarinaFsrLodBias(
             Settings::IsDockedMode(), *ocarina_fsr_failed,
-            image != nullptr && True(image->flags & ImageFlagBits::GpuModified));
+            image != nullptr && True(image->flags & ImageFlagBits::GpuModified)) ||
+            (ocarina_dlss_bias && VideoCommon::OcarinaDlssJitterMode() == 0);
     }
     if (needs_swizzle_mapping && !key.drop_custom_border && !image_view.HasIdentitySwizzle()) {
         const VkComponentMapping& mapping = image_view.Swizzle();
