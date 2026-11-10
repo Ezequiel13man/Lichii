@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  OOT_SOURCE_SHA: 0afb506be64d34d9b2459e93d469f605563e8f04
+  OOT_SOURCE_SHA: 0aedddf0e17feca8968146d70ceb45b1f5d91440
 
 jobs:
   build:
@@ -177,6 +177,14 @@ jobs:
             }
           }
           windeployqt --release --no-translations build/release/bin/lichii.exe
+          @(
+            '@echo off'
+            'setlocal'
+            'cd /d "%~dp0"'
+            'set "EDEN_NX2_DLSS_JITTER=2"'
+            'set "EDEN_NX2_OOT_MOVIE_NETWORK=1"'
+            'start "" "%~dp0lichii.exe" %*'
+          ) | Set-Content -Encoding ascii 'build/release/bin/Launch_Lichii_DLSS_FMV.bat'
 
       - name: Upload Windows binary
         uses: actions/upload-artifact@v7
