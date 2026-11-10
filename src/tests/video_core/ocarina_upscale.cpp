@@ -32,29 +32,12 @@ TEST_CASE("OoT FSR texture LOD bias follows the upscaler, the console mode and f
     using VideoCommon::OcarinaFsrLodBias;
     CHECK(OcarinaFsrLodBias(Fsr) == -1.58f);
     CHECK(OcarinaFsrLodBias(Dlss) == 0.0f);
-    CHECK(OcarinaFsrLodBias(Dlss, true) == -0.58f);
-    CHECK(OcarinaFsrLodBias(Fsr, true) == -1.58f);
-    CHECK(OcarinaFsrLodBias(Native, true) == 0.0f);
     CHECK(OcarinaFsrLodBias(Native) == 0.0f);
     CHECK(KeepOcarinaFsrLodBias(true, false, false));
     CHECK_FALSE(KeepOcarinaFsrLodBias(false, false, false));
     CHECK_FALSE(KeepOcarinaFsrLodBias(true, false, true));
     CHECK_FALSE(KeepOcarinaFsrLodBias(true, true, false));
     CHECK_FALSE(KeepOcarinaFsrLodBias(true, true, true));
-}
-
-TEST_CASE("OoT DLSS hotkey changes apply together between frames", "[video_core][ocarina]") {
-    VideoCommon::OcarinaDlssJitterControl control;
-    const int initial = control.applied.load();
-    const bool enabled = control.Toggle();
-    CHECK(control.applied.load() == initial);
-    CHECK(enabled == (initial == 0));
-    CHECK(control.Apply());
-    CHECK((control.applied.load() != 0) == enabled);
-    CHECK_FALSE(control.Apply());
-    CHECK(control.Toggle() != enabled);
-    CHECK(control.Apply());
-    CHECK(control.applied.load() == initial);
 }
 
 TEST_CASE("FSR temporal sharpness uses the existing stops slider", "[video_core][fsr][ocarina]") {

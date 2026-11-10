@@ -775,7 +775,6 @@ struct OcarinaUpscaler::Impl {
     OcarinaColorPass output_pass;
     std::array<std::unique_ptr<OcarinaFrameSlot>, 4> slots;
     std::optional<u64> last_frame;
-    int last_dlss_jitter_mode{};
     Matrix last_view_projection{};
     vk::Image native_scene;
     vk::ImageView native_scene_view;
@@ -989,9 +988,7 @@ bool OcarinaUpscaler::Record(VkImageView color, VkImageView depth, VkImageView t
         bias_image = *effects.bias;
     }
 
-    const int dlss_jitter_mode = VideoCommon::OcarinaDlssJitterMode();
     const bool reset = !state.last_frame || frame != *state.last_frame + 1 ||
-                       dlss_jitter_mode != state.last_dlss_jitter_mode ||
                        !std::ranges::equal(previous, state.last_view_projection,
                                            [](f32 a, f32 b) { return std::abs(a - b) < 0.001f; });
 #ifdef EGLANTINE_STREAMLINE
@@ -1003,9 +1000,11 @@ bool OcarinaUpscaler::Record(VkImageView color, VkImageView depth, VkImageView t
                                COLOR_RANGE, VK_IMAGE_ASPECT_COLOR_BIT},
             .render_size = extent,
             .upscale_size = output_extent,
-            .jitter = {dlss_jitter_mode != 0 ? jitter[0] : 0.0f,
-                       dlss_jitter_mode == 2 ? -jitter[1]
-                       : dlss_jitter_mode != 0 ? jitter[1] : 0.0f},
+            // EDEN_NX2_DLSS_JITTER: the scene's offset this frame (1), or with y flipped (2).
+            .jitter = {VideoCommon::OcarinaDlssJitterMode() != 0 ? jitter[0] : 0.0f,
+                       VideoCommon::OcarinaDlssJitterMode() == 2   ? -jitter[1]
+                       : VideoCommon::OcarinaDlssJitterMode() != 0 ? jitter[1]
+                                                                   : 0.0f},
             .motion_vector_scale = {1.0f, 1.0f},
             .reset = reset,
             .depth_inverted = false,
@@ -1100,7 +1099,6 @@ bool OcarinaUpscaler::Record(VkImageView color, VkImageView depth, VkImageView t
     }
     state.scheduler.InvalidateState();
     state.last_frame = frame;
-    state.last_dlss_jitter_mode = dlss_jitter_mode;
     state.last_view_projection = current;
     return true;
 }

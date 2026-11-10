@@ -3236,12 +3236,6 @@ void RasterizerVulkan::FrameDumpPass(const Framebuffer* framebuffer) {
 }
 
 void RasterizerVulkan::TickFrame() {
-    if (program_id == VideoCommon::OotNetwork::ProgramId &&
-        VideoCommon::OcarinaDlssJitter().Apply()) {
-        LOG_INFO(Render_Vulkan, "Ocarina DLSS jitter and mipmap bias: {} (mode {})",
-                 VideoCommon::OcarinaDlssJitterMode() != 0 ? "on" : "off",
-                 VideoCommon::OcarinaDlssJitterMode());
-    }
     if (VideoCore::Nx2Debug::HasRequests()) {
         if (auto capture = VideoCore::Nx2Debug::TakeCapture()) {
             frame_dump.Arm(std::move(capture->directory), capture->sampled, capture->buffers,
