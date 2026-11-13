@@ -260,8 +260,8 @@ public:
 
     /// The LOD bias Ocarina's FSR adds to mipmapped samplers this session (0 for other games or
     /// upscalers), resolved on first use.
-    [[nodiscard]] f32 OcarinaFsrLodBias();
-    std::optional<f32> ocarina_fsr_lod_bias;
+    [[nodiscard]] f32 OcarinaTextureLodBias();
+    std::optional<f32> ocarina_texture_lod_bias;
     /// Set when the Ocarina upscaler fails during the session: samplers drop the bias again.
     bool ocarina_fsr_failed{};
     /// The game DLSS network's health check (ProbeGameDlssOutput), created on first use.

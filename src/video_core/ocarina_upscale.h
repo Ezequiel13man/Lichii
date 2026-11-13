@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <array>
+#include <cstdlib>
 #include <string_view>
 
 namespace VideoCommon {
@@ -27,16 +29,43 @@ constexpr OcarinaUpscaleBackend SelectOcarinaUpscaler(bool fsr_enabled, bool dls
                                         : OcarinaUpscaleBackend::Native;
 }
 
-/// Texture LOD bias added to Ocarina's mipmapped samplers while FSR upscales. AMD recommends
-/// log2(render / output) - 1: -1.58 for docked 1440p -> 4K.
-constexpr float OcarinaFsrLodBias(OcarinaUpscaleBackend backend) {
-    return backend == OcarinaUpscaleBackend::Fsr ? -1.58f : 0.0f;
+/// EDEN_NX2_DLSS_JITTER enables DLSS jitter and LOD bias. Mode 1 uses the scene offset,
+/// and mode 2 flips the vertical offset passed to Streamline.
+inline int OcarinaDlssJitterMode() {
+    static const int mode = [] {
+        if (const char* value = std::getenv("EDEN_NX2_DLSS_JITTER")) {
+            const std::string_view setting{value};
+            if (setting == "1" || setting == "2") {
+                return setting.front() - '0';
+            }
+        }
+        return 0;
+    }();
+    return mode;
+}
+
+constexpr std::array<float, 2> OcarinaDlssJitterOffset(std::array<float, 2> offset, int mode) {
+    if (mode == 2) {
+        offset[1] = -offset[1];
+    }
+    return mode == 0 ? std::array<float, 2>{} : offset;
+}
+
+/// Texture LOD bias for docked OoT. FSR uses the 1440p-to-4K recommendation.
+constexpr float OcarinaTextureLodBias(OcarinaUpscaleBackend backend, int dlss_jitter_mode) {
+    if (backend == OcarinaUpscaleBackend::Fsr) {
+        return -1.58f;
+    }
+    if (backend == OcarinaUpscaleBackend::Dlss && dlss_jitter_mode != 0) {
+        return -1.75f;
+    }
+    return 0.0f;
 }
 
 /// Whether a sampler with that bias keeps it for an image: only docked (handheld isn't measured),
 /// not for images the GPU wrote (render targets would read a mip too sharp), and not once the
 /// upscaler failed this session (the game's own pass runs again).
-constexpr bool KeepOcarinaFsrLodBias(bool docked, bool upscaler_failed, bool gpu_written) {
+constexpr bool KeepOcarinaTextureLodBias(bool docked, bool upscaler_failed, bool gpu_written) {
     return docked && !upscaler_failed && !gpu_written;
 }
 

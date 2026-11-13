@@ -4671,13 +4671,15 @@ void CustomBorderColorBudget::Release() noexcept {
     held = 0;
 }
 
-f32 TextureCacheRuntime::OcarinaFsrLodBias() {
-    if (!ocarina_fsr_lod_bias) {
+f32 TextureCacheRuntime::OcarinaTextureLodBias() {
+    if (!ocarina_texture_lod_bias) {
         const bool ocarina = Settings::GetCurrentProgramID() == 0x0400486024DEC000ULL;
-        ocarina_fsr_lod_bias =
-            ocarina ? VideoCommon::OcarinaFsrLodBias(ResolveOcarinaUpscaler(device)) : 0.0f;
+        ocarina_texture_lod_bias = ocarina ? VideoCommon::OcarinaTextureLodBias(
+                                               ResolveOcarinaUpscaler(device),
+                                               VideoCommon::OcarinaDlssJitterMode())
+                                          : 0.0f;
     }
-    return *ocarina_fsr_lod_bias;
+    return *ocarina_texture_lod_bias;
 }
 
 Sampler::Sampler(TextureCacheRuntime& runtime, const Tegra::Texture::TSCEntry& tsc) {
@@ -4739,13 +4741,12 @@ Sampler::Sampler(TextureCacheRuntime& runtime, const Tegra::Texture::TSCEntry& t
             max_lod = 0.25f;
         }
     }
-    // Ocarina with FSR: FSR renders below the output size, so textures would pick the render
-    // size's mips; the bias keeps the output's detail (VideoCommon::OcarinaFsrLodBias).
+    // Ocarina's temporal upscaler needs texture detail for the reconstructed image.
     f32 lod_bias = tsc.LodBias();
     ocarina_fsr_failed = &runtime.ocarina_fsr_failed;
-    if (const f32 fsr_lod_bias = runtime.OcarinaFsrLodBias();
-        fsr_lod_bias != 0.0f && tsc.mipmap_filter != TextureMipmapFilter::None) {
-        const f32 biased = std::clamp(lod_bias + fsr_lod_bias, -15.0f, 15.0f);
+    if (const f32 ocarina_lod_bias = runtime.OcarinaTextureLodBias();
+        ocarina_lod_bias != 0.0f && tsc.mipmap_filter != TextureMipmapFilter::None) {
+        const f32 biased = std::clamp(lod_bias + ocarina_lod_bias, -15.0f, 15.0f);
         added_lod_bias = biased - lod_bias;
         lod_bias = biased;
     }
@@ -4784,13 +4785,13 @@ Sampler::VariantKey Sampler::MakeKey(const ImageView& image_view, bool is_depth)
     // Vulkan leaves it undefined and AMD returns the 0/1 compare result (Ocarina forest fog
     // composite read alpha 0 -> black screen). Use a variant without comparison.
     key.drop_compare = has_depth_comparison && !is_depth;
-    // The FSR bias is for the game's textures. Images the GPU wrote (render targets: bloom and
+    // The temporal bias is for the game's textures. Images the GPU wrote (render targets: bloom and
     // blur chains, reflections, fog) keep the game's own bias, or they'd read a mip too sharp.
     // So does every image in handheld mode (the console mode can change in-session), and after
     // the upscaler failed this session (the game's pass runs again).
     if (added_lod_bias != 0.0f) {
         const Image* const image = image_view.BackingImage();
-        key.drop_lod_bias = !VideoCommon::KeepOcarinaFsrLodBias(
+        key.drop_lod_bias = !VideoCommon::KeepOcarinaTextureLodBias(
             Settings::IsDockedMode(), *ocarina_fsr_failed,
             image != nullptr && True(image->flags & ImageFlagBits::GpuModified));
     }

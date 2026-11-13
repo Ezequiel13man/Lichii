@@ -42,6 +42,41 @@
 
 namespace Tegra::Engines {
 
+namespace {
+
+bool OotMovieNetworkChosen(const VideoCore::RasterizerInterface& rasterizer) {
+    static const char* const env = std::getenv("EDEN_NX2_OOT_MOVIE_NETWORK");
+    bool chosen = false;
+    const char* why = "setting";
+    if (env != nullptr && (env[0] == '0' || env[0] == '1')) {
+        chosen = env[0] == '1';
+        why = "EDEN_NX2_OOT_MOVIE_NETWORK";
+    } else {
+        switch (Settings::values.oot_movie_upscale.GetValue()) {
+        case Settings::OotMovieUpscale::Game:
+            chosen = true;
+            break;
+        case Settings::OotMovieUpscale::Bilinear:
+            break;
+        case Settings::OotMovieUpscale::Automatic:
+        default:
+            chosen = rasterizer.UsesNativeTensorOperations();
+            why = chosen ? "Automatic: native tensor operations"
+                         : "Automatic: shader emulation";
+            break;
+        }
+    }
+
+    static std::atomic<int> logged{-1};
+    if (logged.exchange(chosen ? 1 : 0) != (chosen ? 1 : 0)) {
+        LOG_INFO(HW_GPU, "Ocarina movies: {} ({})",
+                 chosen ? "the game's own upscaler" : "bilinear copy", why);
+    }
+    return chosen;
+}
+
+} // Anonymous namespace
+
 KeplerCompute::KeplerCompute(MemoryManager& memory_manager_)
     : memory_manager{memory_manager_}
     , upload_state{memory_manager, regs.upload}
@@ -649,7 +684,8 @@ bool KeplerCompute::DispatchNativeCompute(const NativeQmdScheduler::Descriptor& 
     // network is left alone: its pair (+0xc0 -> +0xd0) carries the tonemap.
     if (!native_upscale_disabled && !dlss_chain.active &&
         Settings::GetCurrentProgramID() == VideoCommon::OotNetwork::ProgramId &&
-        (launch_description.const_buffer_enable_mask & 1)) {
+        (launch_description.const_buffer_enable_mask & 1) &&
+        !OotMovieNetworkChosen(*rasterizer)) {
         const auto& cbuf = launch_description.const_buffer_config[0];
         const GPUVAddr cbuf_address = (GPUVAddr{cbuf.address_high} << 32) | cbuf.address_low;
         const auto image = [&](u32 offset) -> std::optional<Texture::TICEntry> {

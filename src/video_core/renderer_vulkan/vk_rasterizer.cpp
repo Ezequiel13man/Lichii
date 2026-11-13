@@ -3379,20 +3379,23 @@ f32 Halton(u32 index, u32 base) {
 
 void RasterizerVulkan::UpdateOcarinaJitter() {
     std::array<f32, 2> want{};
-    // Only while FSR replaced the previous frame's upscale: a frame the game upscales itself
-    // would show the offset as a shake. Only draws that depth-test against the scene depth at
+    // Only while a temporal backend replaced the previous frame's upscale: the game's own
+    // upscale would show the offset as a shake. Only draws that depth-test against scene depth at
     // the scene size, so a depth pre-pass and the colour passes move together; shadow maps,
     // half-size passes and full-screen passes (which keep the depth bound without using it, as
     // #678 found, some with depth writes on: with the test off nothing writes depth) stay put.
     const auto& regs = maxwell3d->regs;
-    if (oot_backend == VideoCommon::OcarinaUpscaleBackend::Fsr && oot_motion.extent.width != 0 &&
+    const bool jittered_backend =
+        oot_backend == VideoCommon::OcarinaUpscaleBackend::Fsr ||
+        (oot_backend == VideoCommon::OcarinaUpscaleBackend::Dlss &&
+         VideoCommon::OcarinaDlssJitterMode() != 0);
+    if (jittered_backend && oot_motion.extent.width != 0 &&
         oot_dlss_frame && *oot_dlss_frame + 1 >= render_trace_frame && regs.depth_test_enable) {
         const auto& targets = texture_cache.GetRenderTargets();
         if (targets.depth_buffer_id) {
             const auto& depth = texture_cache.GetImageView(targets.depth_buffer_id);
-            if (depth.size.width == oot_motion.extent.width &&
-                depth.size.height == oot_motion.extent.height && !depth.IsRescaled()) {
-                // Halton (2, 3) with AMD's phase count for the last FSR frame's scale.
+            if (oot_motion.SceneSized(depth.size.width, depth.size.height) && !depth.IsRescaled()) {
+                // Halton (2, 3) with the phase count for the last temporal frame's scale.
                 const u32 index = static_cast<u32>(render_trace_frame % oot_jitter_phases) + 1;
                 want = {Halton(index, 2) - 0.5f, Halton(index, 3) - 0.5f};
                 oot_jitter_frame = render_trace_frame;

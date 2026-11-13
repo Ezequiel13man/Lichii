@@ -316,6 +316,10 @@ public:
         return false;
     }
 
+    [[nodiscard]] virtual bool UsesNativeTensorOperations() const {
+        return false;
+    }
+
     /// Whether NVIDIA DLSS (the "Use NVIDIA DLSS" setting) would draw a game's DLSS evaluation.
     [[nodiscard]] virtual bool UsesNvidiaDlss() const {
         return false;

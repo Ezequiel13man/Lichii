@@ -161,6 +161,9 @@ public:
                                const Tegra::Engines::Fermi2D::Surface& dst,
                                const Tegra::Engines::Fermi2D::Config& copy_config) override;
     bool SupportsGameDlssNetwork() const override;
+    bool UsesNativeTensorOperations() const override {
+        return pipeline_cache.UsesNativeTensorOperations();
+    }
     bool UsesNvidiaDlss() const override;
     bool CanProbeGameDlssOutput() const override {
         return true;
@@ -362,7 +365,7 @@ private:
     std::array<f32, 2> oot_jitter_applied{}; ///< in the viewport state now (render pixels)
     std::array<f32, 2> oot_jitter_offset{};  ///< what oot_jitter_frame's scene draws used
     std::optional<u64> oot_jitter_frame;
-    u32 oot_jitter_phases{8}; ///< Halton sequence length for the last FSR frame's scale
+    u32 oot_jitter_phases{8}; ///< Halton sequence length for the last temporal frame's scale
     std::optional<u64> oot_4k_scene_frame;
     VkImage oot_4k_guest_present{};
     std::optional<u64> oot_effects_frame;

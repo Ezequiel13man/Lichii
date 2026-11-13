@@ -138,6 +138,10 @@ public:
 
     [[nodiscard]] ComputePipeline* CurrentComputePipeline(u64& native_key);
 
+    [[nodiscard]] bool UsesNativeTensorOperations() const {
+        return profile.support_cooperative_hmma || profile.support_cooperative_hmma_16x16x16;
+    }
+
     void LoadDiskResources(u64 title_id, std::stop_token stop_loading,
                            const VideoCore::DiskResourceLoadCallback& callback);
 
